@@ -1,9 +1,18 @@
 {
+  "version": 1,
   "plugins": [
     {
       "id": "alarm-clock",
-      "path": "alarm-clock",
-      "repository": "https://github.com/amwadud/noctalia-plugins"
+      "name": "Alarm Clock",
+      "version": "1.0.0",
+      "official": false,
+      "author": "amwadud",
+      "description": "A simple alarm clock plugin for Noctalia. Set alarms with labels, snooze and repeat options.",
+      "repository": "https://github.com/amwadud/noctalia-plugins",
+      "minNoctaliaVersion": "3.6.0",
+      "license": "MIT",
+      "tags": ["Bar", "Panel", "Productivity"],
+      "lastUpdated": "2026-04-25T00:00:00.000Z"
     }
   ]
 }
