@@ -1,0 +1,43 @@
+{
+  "widget": {
+    "ringing": "Ringing!",
+    "no-alarms": "No alarms",
+    "tooltip-ringing": "Alarm ringing! Click to manage",
+    "tooltip-next": "Next alarm: {label} at {time}",
+    "tooltip-none": "No alarms set"
+  },
+  "panel": {
+    "title": "Alarm Clock",
+    "add-alarm": "Add Alarm",
+    "cancel": "Cancel",
+    "label-placeholder": "Wake up",
+    "label": "Label",
+    "time": "Time",
+    "repeat": "Repeat",
+    "dismiss": "Dismiss",
+    "snooze": "Snooze {minutes}m",
+    "ringing": "Alarm ringing!",
+    "no-alarms": "No alarms set",
+    "no-alarms-hint": "Tap + to add one",
+    "delete": "Delete"
+  },
+  "settings": {
+    "title": "Alarm Clock Settings",
+    "sound": "Alarm Sound",
+    "sound-desc": "Play sound when alarm rings",
+    "notification": "Toast Notifications",
+    "notification-desc": "Show a toast when alarm triggers",
+    "snooze": "Snooze Duration",
+    "save": "Save Settings",
+    "ipc-title": "IPC Commands"
+  },
+  "days": {
+    "sun": "Sun",
+    "mon": "Mon",
+    "tue": "Tue",
+    "wed": "Wed",
+    "thu": "Thu",
+    "fri": "Fri",
+    "sat": "Sat"
+  }
+}
