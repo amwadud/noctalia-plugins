@@ -1,0 +1,9 @@
+{
+  "plugins": [
+    {
+      "id": "alarm-clock",
+      "path": "alarm-clock",
+      "repository": "https://github.com/amwadud/noctalia-plugins"
+    }
+  ]
+}
