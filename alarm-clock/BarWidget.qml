@@ -56,7 +56,6 @@ Item {
         }
     }
 
-    // Reset opacity when not ringing
     onIsRingingChanged: {
         if (!isRinging) {
             visualCapsule.opacity = 1.0
@@ -88,30 +87,25 @@ Item {
             spacing: Style.marginS
 
             NIcon {
+                id: bellIcon
                 icon: root.isRinging ? "bell-ringing" : (root.hasUpcomingAlarm ? "bell" : "bell-off")
                 color: root.isRinging ? Color.mOnPrimary : Color.mOnSurface
                 pointSize: root.barFontSize
+                transformOrigin: Item.Bottom
 
-                // Shake animation when ringing
-                RotationAnimation {
-                    target: parent
+                SequentialAnimation on rotation {
                     running: root.isRinging
                     loops: Animation.Infinite
-                    from: -15
-                    to: 15
-                    duration: 200
-                    easing.type: Easing.InOutSine
+                    NumberAnimation { to: -12; duration: 120; easing.type: Easing.InOutSine }
+                    NumberAnimation { to:  12; duration: 120; easing.type: Easing.InOutSine }
+                    NumberAnimation { to:  -8; duration: 100; easing.type: Easing.InOutSine }
+                    NumberAnimation { to:   8; duration: 100; easing.type: Easing.InOutSine }
+                    NumberAnimation { to:   0; duration: 80;  easing.type: Easing.InOutSine }
+                    PauseAnimation  { duration: 600 }
+                }
 
-                    SequentialAnimation on rotation {
-                        running: root.isRinging
-                        loops: Animation.Infinite
-                        NumberAnimation { to: -12; duration: 120 }
-                        NumberAnimation { to:  12; duration: 120 }
-                        NumberAnimation { to:  -8; duration: 100 }
-                        NumberAnimation { to:   8; duration: 100 }
-                        NumberAnimation { to:   0; duration: 80  }
-                        PauseAnimation  { duration: 600 }
-                    }
+                onIsRingingChanged: {
+                    if (!root.isRinging) rotation = 0
                 }
             }
 
@@ -130,13 +124,10 @@ Item {
         anchors.fill: parent
         hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
-        acceptedButtons: Qt.LeftButton | Qt.RightButton
 
-        onClicked: (mouse) => {
-            if (mouse.button === Qt.LeftButton) {
-                if (pluginApi) {
-                    pluginApi.openPanel(root.screen, root)
-                }
+        onClicked: {
+            if (pluginApi) {
+                pluginApi.openPanel(root.screen, root)
             }
         }
 
