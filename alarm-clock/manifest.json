@@ -3,10 +3,10 @@
   "name": "Alarm Clock",
   "version": "1.0.0",
   "minNoctaliaVersion": "3.6.0",
-  "author": "you",
+  "author": "amwadud",
   "license": "MIT",
-  "repository": "https://github.com/yourusername/alarm-clock",
-  "description": "A simple alarm clock plugin for Noctalia. Set multiple alarms with labels, sounds and repeat options.",
+  "repository": "https://github.com/amwadud/noctalia-plugins",
+  "description": "A simple alarm clock plugin for Noctalia. Set alarms with labels, snooze and repeat options.",
   "tags": ["Bar", "Panel", "Productivity"],
   "entryPoints": {
     "main": "Main.qml",
@@ -18,13 +18,10 @@
     "plugins": []
   },
   "metadata": {
-    "commandPrefix": "alarm",
     "defaultSettings": {
       "alarms": [],
-      "soundEnabled": true,
-      "notificationEnabled": true,
       "snoozeMinutes": 5,
-      "alarmSound": "default"
+      "notificationEnabled": true
     }
   }
 }

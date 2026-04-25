@@ -1,157 +1,98 @@
 import QtQuick
-import Quickshell
-import qs.Commons
+import Quickshell.Io
 import qs.Services.UI
+import qs.Commons
 
 Item {
     id: root
 
     property var pluginApi: null
 
-    // ── State ────────────────────────────────────────────────────────────────
-
-    // Alarms list: [{id, label, hour, minute, enabled, repeat, days:[0-6], snoozed}]
+    // ── State ─────────────────────────────────────────────────────────────────
     property var alarms: pluginApi?.pluginSettings?.alarms ?? []
-
-    // Currently ringing alarm id (empty string = none)
     property string ringingAlarmId: ""
     property bool isRinging: ringingAlarmId !== ""
-
-    // Next upcoming alarm display (for bar widget)
-    property string nextAlarmLabel: ""
     property string nextAlarmTime: ""
-    property bool hasUpcomingAlarm: nextAlarmTime !== ""
+    property string nextAlarmLabel: ""
 
-    // ── Clock tick (every 30s is enough; we check :00 seconds window) ────────
-    Timer {
-        id: clockTimer
-        interval: 10000   // check every 10 seconds
-        repeat: true
-        running: true
-        onTriggered: {
-            root.checkAlarms()
-            root.updateNextAlarm()
-        }
-    }
-
-    // Initial update
-    Component.onCompleted: {
-        root.updateNextAlarm()
-    }
-
-    // ── Helpers ──────────────────────────────────────────────────────────────
-
-    function padTwo(n) {
+    // ── Helpers ───────────────────────────────────────────────────────────────
+    function pad(n) {
         return n < 10 ? "0" + n : "" + n
     }
 
-    function formatTime(hour, minute) {
-        return padTwo(hour) + ":" + padTwo(minute)
-    }
-
-    function nowHour() {
-        return new Date().getHours()
-    }
-
-    function nowMinute() {
-        return new Date().getMinutes()
-    }
-
-    function nowDay() {
-        // 0=Sun,1=Mon,...,6=Sat  (same as JS Date)
-        return new Date().getDay()
-    }
-
-    function alarmShouldRingNow(alarm) {
-        if (!alarm.enabled) return false
-        if (alarm.snoozed) return false
-        var h = nowHour()
-        var m = nowMinute()
-        if (alarm.hour !== h || alarm.minute !== m) return false
-        // repeat: check day
-        if (alarm.repeat && alarm.days && alarm.days.length > 0) {
-            return alarm.days.indexOf(nowDay()) >= 0
-        }
-        return true
-    }
-
-    function checkAlarms() {
-        var updated = false
-        var alarmsCopy = JSON.parse(JSON.stringify(root.alarms))
-        for (var i = 0; i < alarmsCopy.length; i++) {
-            var a = alarmsCopy[i]
-            if (alarmShouldRingNow(a) && root.ringingAlarmId === "") {
-                root.ringingAlarmId = a.id
-                sendNotification(a)
-                Logger.i("AlarmClock", "Alarm triggered: " + a.label)
-                // If not repeating, disable after ring
-                if (!a.repeat) {
-                    alarmsCopy[i].enabled = false
-                    updated = true
-                }
-            }
-        }
-        if (updated) {
-            pluginApi.pluginSettings.alarms = alarmsCopy
-            pluginApi.saveSettings()
-        }
-    }
-
-    function sendNotification(alarm) {
-        if (pluginApi?.pluginSettings?.notificationEnabled !== false) {
-            ToastService.showNotice("⏰ Alarm: " + alarm.label + " — " + formatTime(alarm.hour, alarm.minute))
-        }
+    function formatTime(h, m) {
+        return pad(h) + ":" + pad(m)
     }
 
     function updateNextAlarm() {
         var now = new Date()
-        var nowMinutes = now.getHours() * 60 + now.getMinutes()
-        var earliest = -1
-        var earliestLabel = ""
-        var earliestTime = ""
-
+        var nowMins = now.getHours() * 60 + now.getMinutes()
+        var best = -1
+        var bestLabel = ""
+        var bestTime = ""
         var list = root.alarms
         for (var i = 0; i < list.length; i++) {
             var a = list[i]
             if (!a.enabled) continue
-            var alarmMinutes = a.hour * 60 + a.minute
-            var diff = alarmMinutes - nowMinutes
-            if (diff < 0) diff += 1440  // next day
-            if (earliest < 0 || diff < earliest) {
-                earliest = diff
-                earliestLabel = a.label
-                earliestTime = formatTime(a.hour, a.minute)
+            var am = a.hour * 60 + a.minute
+            var diff = am - nowMins
+            if (diff < 0) diff += 1440
+            if (best < 0 || diff < best) {
+                best = diff
+                bestLabel = a.label
+                bestTime = formatTime(a.hour, a.minute)
             }
         }
-
-        root.nextAlarmLabel = earliestLabel
-        root.nextAlarmTime = earliestTime
+        root.nextAlarmLabel = bestLabel
+        root.nextAlarmTime = bestTime
     }
 
-    function addAlarm(label, hour, minute, repeat, days) {
+    function checkAlarms() {
+        if (root.isRinging) return
+        var h = new Date().getHours()
+        var m = new Date().getMinutes()
         var list = JSON.parse(JSON.stringify(root.alarms))
-        var id = "alarm_" + Date.now()
+        var changed = false
+        for (var i = 0; i < list.length; i++) {
+            var a = list[i]
+            if (!a.enabled) continue
+            if (a.hour !== h || a.minute !== m) continue
+            root.ringingAlarmId = a.id
+            if (pluginApi?.pluginSettings?.notificationEnabled !== false) {
+                ToastService.showNotice("⏰ " + a.label + " — " + formatTime(h, m))
+            }
+            if (!a.repeat) {
+                list[i].enabled = false
+                changed = true
+            }
+            break
+        }
+        if (changed) {
+            pluginApi.pluginSettings.alarms = list
+            pluginApi.saveSettings()
+            root.alarms = list
+        }
+    }
+
+    function addAlarm(label, hour, minute, repeat) {
+        var list = JSON.parse(JSON.stringify(root.alarms))
         list.push({
-            id: id,
+            id: "alarm_" + Date.now(),
             label: label || "Alarm",
-            hour: hour,
-            minute: minute,
+            hour: parseInt(hour),
+            minute: parseInt(minute),
             enabled: true,
-            repeat: repeat || false,
-            days: days || [],
-            snoozed: false
+            repeat: repeat || false
         })
         pluginApi.pluginSettings.alarms = list
         pluginApi.saveSettings()
         root.alarms = list
         root.updateNextAlarm()
-        ToastService.showNotice("Alarm set for " + formatTime(hour, minute))
-        Logger.i("AlarmClock", "Alarm added: " + label + " at " + formatTime(hour, minute))
+        ToastService.showNotice("Alarm set for " + formatTime(parseInt(hour), parseInt(minute)))
     }
 
     function removeAlarm(id) {
-        var list = JSON.parse(JSON.stringify(root.alarms))
-        list = list.filter(function(a) { return a.id !== id })
+        var list = root.alarms.filter(function(a) { return a.id !== id })
         pluginApi.pluginSettings.alarms = list
         pluginApi.saveSettings()
         root.alarms = list
@@ -161,10 +102,7 @@ Item {
     function toggleAlarm(id) {
         var list = JSON.parse(JSON.stringify(root.alarms))
         for (var i = 0; i < list.length; i++) {
-            if (list[i].id === id) {
-                list[i].enabled = !list[i].enabled
-                break
-            }
+            if (list[i].id === id) { list[i].enabled = !list[i].enabled; break }
         }
         pluginApi.pluginSettings.alarms = list
         pluginApi.saveSettings()
@@ -174,73 +112,69 @@ Item {
 
     function dismissAlarm() {
         root.ringingAlarmId = ""
+        root.updateNextAlarm()
     }
 
     function snoozeAlarm() {
-        if (root.ringingAlarmId === "") return
-        var list = JSON.parse(JSON.stringify(root.alarms))
-        var snoozeMin = pluginApi?.pluginSettings?.snoozeMinutes ?? 5
-        var snoozeMs = snoozeMin * 60 * 1000
-        // Schedule a one-shot snooze re-ring
-        snoozeTimer.snoozeAlarmId = root.ringingAlarmId
-        snoozeTimer.interval = snoozeMs
+        if (!root.isRinging) return
+        var mins = pluginApi?.pluginSettings?.snoozeMinutes ?? 5
+        snoozeTimer.interval = mins * 60 * 1000
+        snoozeTimer.savedId = root.ringingAlarmId
         snoozeTimer.restart()
         root.ringingAlarmId = ""
-        ToastService.showNotice("Snoozed for " + snoozeMin + " minutes")
+        ToastService.showNotice("Snoozed for " + mins + " minutes")
     }
 
-    // ── Snooze one-shot timer ─────────────────────────────────────────────────
+    // ── Timers ────────────────────────────────────────────────────────────────
     Timer {
-        id: snoozeTimer
-        property string snoozeAlarmId: ""
-        repeat: false
+        interval: 10000
+        repeat: true
+        running: true
         onTriggered: {
-            if (snoozeAlarmId !== "") {
-                root.ringingAlarmId = snoozeAlarmId
-                // Find the alarm and notify
-                var list = root.alarms
-                for (var i = 0; i < list.length; i++) {
-                    if (list[i].id === snoozeAlarmId) {
-                        root.sendNotification(list[i])
-                        break
-                    }
-                }
-                snoozeAlarmId = ""
-            }
-        }
-    }
-
-    // ── Watch settings changes ────────────────────────────────────────────────
-    Connections {
-        target: pluginApi
-        function onPluginSettingsChanged() {
-            root.alarms = pluginApi.pluginSettings.alarms ?? []
+            root.checkAlarms()
             root.updateNextAlarm()
         }
     }
 
-    // ── IPC Handler ──────────────────────────────────────────────────────────
+    Timer {
+        id: snoozeTimer
+        property string savedId: ""
+        repeat: false
+        onTriggered: {
+            if (savedId !== "") {
+                root.ringingAlarmId = savedId
+                savedId = ""
+                if (pluginApi?.pluginSettings?.notificationEnabled !== false) {
+                    ToastService.showNotice("⏰ Snooze over!")
+                }
+            }
+        }
+    }
+
+    Component.onCompleted: {
+        root.updateNextAlarm()
+    }
+
+    // ── IPC ───────────────────────────────────────────────────────────────────
     IpcHandler {
         target: "plugin:alarm-clock"
 
-        // qs -c noctalia-shell ipc call plugin:alarm-clock toggle
         function toggle() {
-            pluginApi.togglePanel(pluginApi.panelOpenScreen ?? null)
+            pluginApi.withCurrentScreen(function(screen) {
+                pluginApi.openPanel(screen)
+            })
         }
 
-        // qs -c noctalia-shell ipc call plugin:alarm-clock dismiss
         function dismiss() {
             root.dismissAlarm()
         }
 
-        // qs -c noctalia-shell ipc call plugin:alarm-clock snooze
         function snooze() {
             root.snoozeAlarm()
         }
 
-        // qs -c noctalia-shell ipc call plugin:alarm-clock add "Wake up" 7 30
-        function add(label, hour, minute) {
-            root.addAlarm(label, parseInt(hour), parseInt(minute), false, [])
+        function add(label: string, hour: string, minute: string) {
+            root.addAlarm(label, parseInt(hour), parseInt(minute), false)
         }
     }
 }
